@@ -118,7 +118,7 @@ contract EncrybitTokenCrowdsale is Owned {
     bool private closed;
     
     // Address where funds are collected
-    address private walletCollect = owner;
+    address private walletCollect;
     
     // Allocation token 
     uint256 public constant tokenForSale = 135000000 * _decimals18; // 50%
@@ -172,7 +172,7 @@ contract EncrybitTokenCrowdsale is Owned {
     constructor(ERC20 _token) public {
         require(_token != address(0));
         token = _token;
-
+        walletCollect  = owner;
     }
     
     /**
@@ -181,7 +181,7 @@ contract EncrybitTokenCrowdsale is Owned {
     */
     function _getTokenAmount(uint256 _weiAmount) private view returns (uint256) {
         uint256 amountToken = _weiAmount * oneEtherValue;
-        uint256 tokenBonus = _getTokenBonus(amountToken);
+        uint256 tokenBonus = _getTokenBonus(amountToken) * _decimals18;
         return amountToken.add(tokenBonus);
     }
     
@@ -291,6 +291,10 @@ contract EncrybitTokenCrowdsale is Owned {
     function _processPurchase(address _beneficiary, uint256 _tokenAmount) notCloseICO internal {
         balances[_beneficiary] = balances[_beneficiary].add(_tokenAmount);
         ENCXRaised = ENCXRaised.add(_tokenAmount);
+    }
+    
+    function close() public onlyOwner { 
+        selfdestruct(owner);  // `owner` is the owners address
     }
     
 }
