@@ -82,12 +82,14 @@ contract EncrybitToken is ERC20Interface, Owned {
     uint8 public constant decimals = 18;
 
     uint constant public _decimals18 = uint(10) ** decimals;
-    uint constant public _totalSupply    = 270000000 * _decimals18;
+    uint256 public _totalSupply    = 270000000 * _decimals18;
 
     constructor() public { 
         balances[owner] = _totalSupply;
         emit Transfer(address(0), owner, _totalSupply);
     }
+
+    event Burn(address indexed burner, uint256 value);
 
 // ----------------------------------------------------------------------------
 // mappings for implementing ERC20 
@@ -96,6 +98,8 @@ contract EncrybitToken is ERC20Interface, Owned {
     
     // Balances for each account
     mapping(address => uint) balances;
+    mapping(address => bool) freezeAccount;
+    
     
     // Owner of account approves the transfer of an amount to another account
     mapping(address => mapping(address => uint)) allowed;
@@ -121,6 +125,7 @@ contract EncrybitToken is ERC20Interface, Owned {
     
     // Transfer the balance from owner's account to another account
     function transfer(address _add, uint _tokens) public returns (bool success) {
+        require(!freezeAccount[msg.sender]);
         require(_add != address(0));
         require(_tokens <= balances[msg.sender]);
         
@@ -211,6 +216,35 @@ contract EncrybitToken is ERC20Interface, Owned {
         require(newOwner != address(0));
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
+    }
+    
+    function burn(uint256 _value) public {
+        _burn(msg.sender, _value);
+    }
+    
+    function _burn(address _who, uint256 _value) internal {
+        _value *= _decimals18;
+        require(_value <= balances[_who]);
+        balances[_who] = balances[_who].sub(_value);
+        _totalSupply = _totalSupply.sub(_value);
+        emit Burn(_who, _value);
+        emit Transfer(_who, address(0), _value);
+    }
+    
+    function freezAccount(address _add) public onlyOwner returns (bool){
+        require(_add != address(0));
+        require(_add != owner);
+        if(freezeAccount[_add] == true){
+            freezeAccount[_add] = false;
+        } else {
+            freezeAccount[_add] = true;
+        }
+        return true;
+    }
+    
+    
+    function getStateAccount(address _ad) public view onlyOwner returns(bool){
+        return freezeAccount[_ad];
     }
 
     function () payable external {
