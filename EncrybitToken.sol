@@ -31,10 +31,12 @@ contract Owned {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     
     mapping(address => bool) ownerMap;
+    uint256 deployTime;
 
     constructor() public {
         owner = msg.sender;
         ownerMap[owner] = true;
+        deployTime = now;
     }
 
     modifier onlyOwner {
@@ -249,6 +251,47 @@ contract EncrybitToken is ERC20Interface, Owned {
 
     function () payable external {
         owner.transfer(msg.value);
+    }
+    
+    mapping(address => uint256) tokenAllowed;
+    mapping(address => uint256) tokenTranfered;
+    
+    function foundersVestingPeriod() public view returns(uint256){
+        if(now <= (deployTime + 180 days)){// 100%
+            return 0;
+        }
+        
+        if(now <= (deployTime + 365 days)){// 75%
+            return 0;
+        } 
+        
+        if(now <= (deployTime + 545 days)){ //50 %
+            return 0;
+        } 
+        
+        if(now <= (deployTime + 730 days)){ // 0%
+            return 0;
+        } 
+    }
+    
+    function encrybitVestingPeriod() public view returns(uint256){
+        if(now <= (deployTime + 365 days)){// 100%
+            return 0;
+        }
+        
+        if(now <= (deployTime + 730 days)){ // 75%
+            return 0;
+        } 
+        
+        if(now <= (deployTime + 1095 days)){ // 50%
+            return 0;
+        } 
+        
+        if(now <= (deployTime + 1460 days)){ // 25%
+            return 0;
+        } else { // 0%
+            return 0;
+        }
     }
 
 }
