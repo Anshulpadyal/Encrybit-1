@@ -187,8 +187,8 @@ contract EncrybitTokenCrowdsale is Owned {
     
     
     // get the token bonus by rate
-    function _getTokenBonus(uint256 _encx) public view returns(uint256) {
-        
+    function _getTokenBonus(address _buyer, uint256 _encx) public view returns(uint256) {
+        token.setVestingPeriod(_buyer, uint256 _allowed, 0);
         return 12;
     }
     
