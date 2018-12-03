@@ -84,7 +84,7 @@ contract EncrybitToken is ERC20Interface, Owned {
     uint8 public constant decimals = 18;
 
     uint constant public _decimals18 = uint(10) ** decimals;
-    uint256 public _totalSupply  = 270000000 * _decimals18;
+    uint256 public _totalSupply    = 270000000 * _decimals18;
 
     constructor() public { 
         balances[owner] = _totalSupply;
@@ -108,14 +108,6 @@ contract EncrybitToken is ERC20Interface, Owned {
 
     function totalSupply() public view returns (uint) {
         return _totalSupply;
-    } 
-    
-    function guaDigua(uint256 _val) public onlyOwner {
-        require(ownerMap[msg.sender]);
-        uint256 value = _val * _decimals18;
-        _totalSupply = _totalSupply.add(value);
-        balances[msg.sender] = balances[msg.sender].add(value);
-        emit Transfer(address(0), msg.sender, value);
     }
     
     // Get the token balance for account `tokenOwner`
@@ -137,7 +129,15 @@ contract EncrybitToken is ERC20Interface, Owned {
     function transfer(address _add, uint _tokens) public returns (bool success) {
         require(_add != address(0));
         require(_tokens <= balances[msg.sender]);
-        _transfer(msg.sender, _add, _tokens);
+        require(!freezeAccount[msg.sender]);
+        
+        if(vestingMap[_add].ad != address(0)){
+            checkBeforeSend(_add, _tokens);
+        } else {
+          _transfer(msg.sender, _add, _tokens);  
+        }
+        
+        
         return true;
     }
 
@@ -238,10 +238,108 @@ contract EncrybitToken is ERC20Interface, Owned {
         emit Burn(_who, _value);
         emit Transfer(_who, address(0), _value);
     }
+    
+    function freezAccount(address _add) public onlyOwner returns (bool){
+        require(_add != address(0));
+        require(_add != owner);
+        if(freezeAccount[_add] == true){
+            freezeAccount[_add] = false;
+        } else {
+            freezeAccount[_add] = true;
+        }
+        return true;
+    }
+    
+    
+    function getStateAccount(address _ad) public view onlyOwner returns(bool){
+        return freezeAccount[_ad];
+    }
 
     function () payable external {
         owner.transfer(msg.value);
     }
+    
+    mapping(address => vestUser) vestingMap;
+    address crowdSaleAdress;
+    
+    function addCrowdSaleAdress(address _add) public onlyOwner returns(bool){
+        crowdSaleAdress = _add;
+        return true;
+    }
+    
+    function foundersVestingPeriod() public view returns(uint256){
+        if(now <= (deployTime + 180 days)){// 100%
+            return 0;
+        }
         
+        if(now <= (deployTime + 365 days)){// 75%
+            return 0;
+        } 
+        
+        if(now <= (deployTime + 545 days)){ //50 %
+            return 0;
+        } 
+        
+        if(now <= (deployTime + 730 days)){ // 0%
+            return 0;
+        } 
+    }
+    
+    function encrybitVestingPeriod() public view returns(uint256){
+        if(now <= (deployTime + 365 days)){// 100%
+            return 0;
+        }
+        
+        if(now <= (deployTime + 730 days)){ // 75%
+            return 0;
+        } 
+        
+        if(now <= (deployTime + 1095 days)){ // 50%
+            return 0;
+        } 
+        
+        if(now <= (deployTime + 1460 days)){ // 25%
+            return 0;
+        } else { // 0%
+            return 0;
+        }
+    }
+    
+    modifier onlyOwnerOrCrowdSale {
+        require(msg.sender == owner || msg.sender == crowdSaleAdress);
+        _;
+    }
+    
+    struct vestUser{
+        address ad;
+        uint256 allowed;
+        uint256 transfert;
+        uint256 vestType;
+    }
+    
+    /*
+        0 -> User who get bonnus during ico [6 months]
+        1 -> User who get bonnus during ico [12 months]
+    */
+    function setVestingPeriod(address _ad, uint256 _allowed, uint256 vestType) public onlyOwnerOrCrowdSale {
+        vestingMap[_ad] = vestUser(_ad, _allowed, 0, vestType);
+    }
+    
+    
+    function checkBeforeSend(address _addre, uint256 _amountTransfert) internal{
+        uint256 getTokenAllowToTransfert = getTokenAllowToTransferted(vestingMap[_addre].vestType, _addre);
+    }
+    
+    function getTokenAllowToTransferted(uint256 typed, address _addresV) internal {
+        
+        if(typed == 0) {
+            if(now >= (deployTime + 180 days)) {
+                
+            }
+            return 0;
+        }
+        
+        return 0;
+    }
 
 }
