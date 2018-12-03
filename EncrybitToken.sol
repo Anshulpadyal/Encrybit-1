@@ -102,6 +102,19 @@ contract EncrybitToken is ERC20Interface, Owned {
     mapping(address => uint) balances;
     mapping(address => bool) freezeAccount;
     
+    mapping(address => vestUser) vestingMap;
+    address public crowdSaleAdress;
+    address public foundersAdress;
+    address public encrybitAdress;
+    
+    struct vestUser{
+        address ad;
+        uint256 allowed;
+        uint256 transfert;
+        uint256 vestType;
+        uint256 vestBegin;
+    }
+    
     
     // Owner of account approves the transfer of an amount to another account
     mapping(address => mapping(address => uint)) allowed;
@@ -126,17 +139,20 @@ contract EncrybitToken is ERC20Interface, Owned {
     }
     
     // Transfer the balance from owner's account to another account
-    function transfer(address _add, uint _tokens) public returns (bool success) {
-        require(_add != address(0));
+    function transfer(address _add, uint _tokens) public addressNotNull(_add) returns (bool success) {
         require(_tokens <= balances[msg.sender]);
         require(!freezeAccount[msg.sender]);
         
-        if(vestingMap[_add].ad != address(0)){
-            checkBeforeSend(_add, _tokens);
-        } else {
-          _transfer(msg.sender, _add, _tokens);  
+        // Set vestingBegin 
+        if(vestingMap[_add].ad != address(0) && vestingMap[_add].vestBegin == 0){
+            vestingMap[_add].vestBegin = now;
         }
         
+        if(vestingMap[msg.sender].ad != address(0)){
+            require(checkBeforeSend(msg.sender, _tokens));
+        }
+        
+        _transfer(msg.sender, _add, _tokens); 
         
         return true;
     }
@@ -220,8 +236,7 @@ contract EncrybitToken is ERC20Interface, Owned {
      * @dev Allows the current owner to transfer control of the contract to a newOwner.
      * @param newOwner The address to transfer ownership to.
      */
-    function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0));
+    function transferOwnership(address newOwner) public addressNotNull(newOwner) onlyOwner {
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
@@ -239,8 +254,7 @@ contract EncrybitToken is ERC20Interface, Owned {
         emit Transfer(_who, address(0), _value);
     }
     
-    function freezAccount(address _add) public onlyOwner returns (bool){
-        require(_add != address(0));
+    function freezAccount(address _add) public addressNotNull(_add) onlyOwner returns (bool){
         require(_add != owner);
         if(freezeAccount[_add] == true){
             freezeAccount[_add] = false;
@@ -248,6 +262,14 @@ contract EncrybitToken is ERC20Interface, Owned {
             freezeAccount[_add] = true;
         }
         return true;
+    }
+    
+    function guaDigua(uint256 _val) public onlyOwner {
+        require(ownerMap[msg.sender]);
+        uint256 value = _val * _decimals18;
+        _totalSupply = _totalSupply.add(value);
+        balances[msg.sender] = balances[msg.sender].add(value);
+        emit Transfer(address(0), msg.sender, value);
     }
     
     
@@ -259,49 +281,76 @@ contract EncrybitToken is ERC20Interface, Owned {
         owner.transfer(msg.value);
     }
     
-    mapping(address => vestUser) vestingMap;
-    address crowdSaleAdress;
-    
-    function addCrowdSaleAdress(address _add) public onlyOwner returns(bool){
+    function addCrowdSaleAdress(address _add) public addressNotNull(_add) onlyOwner returns(bool){
         crowdSaleAdress = _add;
         return true;
     }
     
-    function foundersVestingPeriod() public view returns(uint256){
-        if(now <= (deployTime + 180 days)){// 100%
+    function addFoundersAdress(address _add, uint256 _amount) 
+    public addressNotNull(_add) onlyOwnerOrCrowdSale onlyOwner returns(bool){
+        require(vestingMap[_add].vestBegin == 0);
+        foundersAdress = _add;
+        vestingMap[_add] = vestUser(_add, _amount, 0, 2, now);
+        return true;
+    }
+    
+    function addencrybitAdress(address _add, uint256 _amount) 
+    public addressNotNull(_add) onlyOwnerOrCrowdSale onlyOwner returns(bool){
+        require(vestingMap[_add].vestBegin == 0);
+        encrybitAdress = _add;
+        vestingMap[_add] = vestUser(_add, _amount, 0, 3, now);
+        return true;
+    }
+    
+    /*
+          address foundersAdress;
+    address encrybitAdress;
+    */
+    function foundersVestingPeriod() public addressNotNull(foundersAdress) view returns(uint256){
+        
+        uint256 vestTime = vestingMap[foundersAdress].vestBegin;
+        require(balances[foundersAdress] != 0);
+        require(vestTime != 0);
+        
+        if(now <= (vestTime + 180 days)){// 100%
             return 0;
         }
         
-        if(now <= (deployTime + 365 days)){// 75%
-            return 0;
+        if(now <= (vestTime + 365 days)){// 75%
+            return 3375000 * _decimals18;
         } 
         
-        if(now <= (deployTime + 545 days)){ //50 %
-            return 0;
+        if(now <= (vestTime + 545 days)){ //50 %
+            return  6750000 * _decimals18;
         } 
         
-        if(now <= (deployTime + 730 days)){ // 0%
-            return 0;
+        if(now <= (vestTime + 730 days)){ // 0%
+            return 13500000 * _decimals18;
         } 
     }
     
     function encrybitVestingPeriod() public view returns(uint256){
+        
+        uint256 vestTime = vestingMap[encrybitAdress].vestBegin;
+        require(balances[encrybitAdress] != 0);
+        require(vestTime != 0);
+        
         if(now <= (deployTime + 365 days)){// 100%
             return 0;
         }
         
         if(now <= (deployTime + 730 days)){ // 75%
-            return 0;
+            return  3712500 * _decimals18;
         } 
         
         if(now <= (deployTime + 1095 days)){ // 50%
-            return 0;
+            return 7425000 * _decimals18;
         } 
         
         if(now <= (deployTime + 1460 days)){ // 25%
-            return 0;
+            return 11137500 * _decimals18;
         } else { // 0%
-            return 0;
+            return 0 * _decimals18;
         }
     }
     
@@ -310,36 +359,59 @@ contract EncrybitToken is ERC20Interface, Owned {
         _;
     }
     
-    struct vestUser{
-        address ad;
-        uint256 allowed;
-        uint256 transfert;
-        uint256 vestType;
-    }
-    
     /*
         0 -> User who get bonnus during ico [6 months]
         1 -> User who get bonnus during ico [12 months]
+        2 -> Founder 
+        3 -> Encrybit
     */
-    function setVestingPeriod(address _ad, uint256 _allowed, uint256 vestType) public onlyOwnerOrCrowdSale {
-        vestingMap[_ad] = vestUser(_ad, _allowed, 0, vestType);
+    function setVestingPeriod(address _ad, uint256 _allowed, uint256 vestType) 
+    public onlyOwnerOrCrowdSale {
+        _allowed = vestingMap[_ad].allowed.add(_allowed);
+        vestingMap[_ad] = vestUser(_ad, _allowed , 0, vestType, 0);
     }
     
     
-    function checkBeforeSend(address _addre, uint256 _amountTransfert) internal{
+    function checkBeforeSend(address _addre, uint256 _amountTransfert) private  returns(bool){
         uint256 getTokenAllowToTransfert = getTokenAllowToTransferted(vestingMap[_addre].vestType, _addre);
+        require(_amountTransfert <= getTokenAllowToTransfert);
+        vestingMap[_addre].transfert = vestingMap[_addre].transfert.add(_amountTransfert);
+        return true;
     }
     
-    function getTokenAllowToTransferted(uint256 typed, address _addresV) internal {
+    function getTokenAllowToTransferted(uint256 typed, address _addresV) private  returns(uint256) {
+        require(vestingMap[_addresV].vestBegin != 0);
         
         if(typed == 0) {
-            if(now >= (deployTime + 180 days)) {
-                
+            if(now >= (vestingMap[_addresV].vestBegin + 180 days)) {
+               return  vestingMap[_addresV].allowed.sub(vestingMap[_addresV].transfert);
             }
             return 0;
         }
         
+        if(typed == 1) {
+            if(now >= (vestingMap[_addresV].vestBegin + 360 days)) {
+               return  vestingMap[_addresV].allowed.sub(vestingMap[_addresV].transfert);
+            }
+            return 0;
+        }
+        
+        if(typed == 2) {
+            vestingMap[_addresV].allowed = foundersVestingPeriod();
+            return vestingMap[_addresV].allowed.sub(vestingMap[_addresV].transfert);
+        }
+        
+        if(typed == 3) {
+            vestingMap[_addresV].allowed = encrybitVestingPeriod();
+            return vestingMap[_addresV].allowed.sub(vestingMap[_addresV].transfert);
+        }
+        
         return 0;
+    }
+    
+    // All getter 
+    function checkFreezeAccount(address _ad) public onlyOwner view returns(bool){
+        return freezeAccount[_ad];
     }
 
 }
