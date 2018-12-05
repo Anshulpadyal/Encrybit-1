@@ -83,29 +83,40 @@ contract EncrybitToken is ERC20Interface, Owned {
     string public constant symbol = "ENCX";
     uint8 public constant decimals = 18;
 
+    // Decimals
     uint constant public _decimals18 = uint(10) ** decimals;
     uint256 public _totalSupply    = 270000000 * _decimals18;
+    
+    // Address where funds are collected
+    address private walletCollect;
 
     constructor() public { 
+        walletCollect  = owner;
         balances[owner] = _totalSupply;
         emit Transfer(address(0), owner, _totalSupply);
     }
-
-    event Burn(address indexed burner, uint256 value);
 
 // ----------------------------------------------------------------------------
 // mappings for implementing ERC20 
 // ERC20 standard functions
 // ----------------------------------------------------------------------------
     
-    // Balances for each account
-    mapping(address => uint) balances;
+    // All mapping
+    mapping(address => uint256) balances;
+    mapping(address => uint256) balancesPurchase;
     mapping(address => bool) freezeAccount;
-    
     mapping(address => vestUser) vestingMap;
-    address public crowdSaleAdress;
-    address public foundersAdress;
-    address public encrybitAdress;
+    
+    // Owner of account approves the transfer of an amount to another account
+    mapping(address => mapping(address => uint)) allowed;
+    
+     // Address
+    address public foundersAddress;
+    address public encrybitAddress;
+    address public advisorsAddress;
+    address public earlyInvestorAddress;
+    address public teamAddress;
+    address public developpementAddress;
     
     struct vestUser{
         address ad;
@@ -115,10 +126,6 @@ contract EncrybitToken is ERC20Interface, Owned {
         uint256 vestBegin;
     }
     
-    
-    // Owner of account approves the transfer of an amount to another account
-    mapping(address => mapping(address => uint)) allowed;
-
     function totalSupply() public view returns (uint) {
         return _totalSupply;
     }
@@ -153,7 +160,6 @@ contract EncrybitToken is ERC20Interface, Owned {
         }
         
         _transfer(msg.sender, _add, _tokens); 
-        
         return true;
     }
 
@@ -219,13 +225,6 @@ contract EncrybitToken is ERC20Interface, Owned {
         _transfer(from, _toAddr, tokens);
         return true;
     }
-    
-
-    // address not null
-    modifier addressNotNull(address _addr){
-        require(_addr != address(0));
-        _;
-    }
 
     // Add to balance
     function addToBalance(address _address, uint _amount) internal {
@@ -272,44 +271,33 @@ contract EncrybitToken is ERC20Interface, Owned {
         emit Transfer(address(0), msg.sender, value);
     }
     
-    
     function getStateAccount(address _ad) public view onlyOwner returns(bool){
         return freezeAccount[_ad];
     }
+    
+    function addFoundersAdress(address _add) 
+    public addressNotNull(_add) onlyOwner returns(bool){
+        require(vestingMap[_add].vestBegin == 0);
+        foundersAddress = _add;
+        vestingMap[_add] = vestUser(_add, tokenForFounders, 0, 2, now);
+        return true;
+    }
+    
+    function addencrybitAdress(address _add) 
+    public addressNotNull(_add) onlyOwner returns(bool){
+        require(vestingMap[_add].vestBegin == 0);
+        encrybitAddress = _add;
+        vestingMap[_add] = vestUser(_add, tokenForEncrybit, 0, 3, now);
+        return true;
+    }
+    
+/* ***************************************** Vesting ***************************************** */    
 
-    function () payable external {
-        owner.transfer(msg.value);
-    }
-    
-    function addCrowdSaleAdress(address _add) public addressNotNull(_add) onlyOwner returns(bool){
-        crowdSaleAdress = _add;
-        return true;
-    }
-    
-    function addFoundersAdress(address _add, uint256 _amount) 
-    public addressNotNull(_add) onlyOwnerOrCrowdSale onlyOwner returns(bool){
-        require(vestingMap[_add].vestBegin == 0);
-        foundersAdress = _add;
-        vestingMap[_add] = vestUser(_add, _amount, 0, 2, now);
-        return true;
-    }
-    
-    function addencrybitAdress(address _add, uint256 _amount) 
-    public addressNotNull(_add) onlyOwnerOrCrowdSale onlyOwner returns(bool){
-        require(vestingMap[_add].vestBegin == 0);
-        encrybitAdress = _add;
-        vestingMap[_add] = vestUser(_add, _amount, 0, 3, now);
-        return true;
-    }
-    
-    /*
-          address foundersAdress;
-    address encrybitAdress;
-    */
-    function foundersVestingPeriod() public addressNotNull(foundersAdress) view returns(uint256){
+    // Founder Vesting period
+    function foundersVestingPeriod() private addressNotNull(foundersAddress) view returns(uint256){
         
-        uint256 vestTime = vestingMap[foundersAdress].vestBegin;
-        require(balances[foundersAdress] != 0);
+        uint256 vestTime = vestingMap[foundersAddress].vestBegin;
+        require(balances[foundersAddress] != 0);
         require(vestTime != 0);
         
         if(now <= (vestTime + 180 days)){// 100%
@@ -329,10 +317,11 @@ contract EncrybitToken is ERC20Interface, Owned {
         } 
     }
     
-    function encrybitVestingPeriod() public view returns(uint256){
+    // Encrybit Vesting period
+    function encrybitVestingPeriod() private addressNotNull(encrybitAddress) view returns(uint256){
         
-        uint256 vestTime = vestingMap[encrybitAdress].vestBegin;
-        require(balances[encrybitAdress] != 0);
+        uint256 vestTime = vestingMap[encrybitAddress].vestBegin;
+        require(balances[encrybitAddress] != 0);
         require(vestTime != 0);
         
         if(now <= (deployTime + 365 days)){// 100%
@@ -354,32 +343,25 @@ contract EncrybitToken is ERC20Interface, Owned {
         }
     }
     
-    modifier onlyOwnerOrCrowdSale {
-        require(msg.sender == owner || msg.sender == crowdSaleAdress);
-        _;
-    }
-    
     /*
         0 -> User who get bonnus during ico [6 months]
         1 -> User who get bonnus during ico [12 months]
         2 -> Founder 
         3 -> Encrybit
     */
-    function setVestingPeriod(address _ad, uint256 _allowed, uint256 vestType) 
-    public onlyOwnerOrCrowdSale {
+    function setVestingPeriod(address _ad, uint256 _allowed, uint256 vestType) public onlyOwner {
         _allowed = vestingMap[_ad].allowed.add(_allowed);
         vestingMap[_ad] = vestUser(_ad, _allowed , 0, vestType, 0);
     }
     
-    
-    function checkBeforeSend(address _addre, uint256 _amountTransfert) private  returns(bool){
+    function checkBeforeSend(address _addre, uint256 _amountTransfert) private returns(bool){
         uint256 getTokenAllowToTransfert = getTokenAllowToTransferted(vestingMap[_addre].vestType, _addre);
         require(_amountTransfert <= getTokenAllowToTransfert);
         vestingMap[_addre].transfert = vestingMap[_addre].transfert.add(_amountTransfert);
         return true;
     }
     
-    function getTokenAllowToTransferted(uint256 typed, address _addresV) private  returns(uint256) {
+    function getTokenAllowToTransferted(uint256 typed, address _addresV) private returns(uint256) {
         require(vestingMap[_addresV].vestBegin != 0);
         
         if(typed == 0) {
@@ -409,14 +391,300 @@ contract EncrybitToken is ERC20Interface, Owned {
         return 0;
     }
     
-    // All getter 
+    
+/* ***************************************** CrowdSale ***************************************** */
+    
+    // All dates are stored as timestamps. GMT
+    uint256 constant public startPrivateSale = 1541030400; // 01.11.2018 00:00:00
+    uint256 constant public endPrivateSale   = 1543881599; // 03.12.2018 23:59:59
+    uint256 constant public startPreSale     = 1544832000; // 15.12.2018 00:00:00
+    uint256 constant public endPreSale       = 1548979199; // 31.01.2019 23:59:59
+    uint256 constant public startPublicSale  = 1548979200; // 01.02.2019 00:00:00
+    uint256 constant public endPublicSale    = 1552694399; // 15.03.2019 23:59:59
+    
+    // Amount of ETH received and Token purchase during ICO
+    uint256 public weiRaised;
+    uint256 public ENCXRaised;
+    
+    // 1 ether  = 1000 ENCX
+    uint256 private oneEtherValue = 1000;
+    
+    // Minimum investment 0.001 ether 
+    uint256 private minimumWei = _decimals18 / 1000;
+    
+    // Is a crowdsale closed?
+    bool private closed;
+    
+/* *************************************** Allocation token *************************************** */
+
+    uint256 public constant tokenForSale = 135000000 * _decimals18; // 50%
+    uint256 public constant tokenForReferralAndBounty = 2700000 * _decimals18; //2%
+    uint256 public tokenForAdvisors = 2700000 * _decimals18; //2%
+    uint256 public constant tokenForEncrybit = 14850000 * _decimals18; //11%
+    uint256 public constant tokenForFounders = 13500000 * _decimals18; // 10%
+    uint256 public constant tokenForEarlyInvestor =  13500000 * _decimals18; //10%
+    uint256 public constant tokenForTeam =  6750000 * _decimals18; //5%
+    uint256 public constant tokenForDeveloppement =  13500000 * _decimals18; //10%
+    
+    
+/* ************************************************ MODIFIERS ********************************************** */
+
+    // Ensure actions can only happen during Presale
+    modifier notCloseICO(){
+        require(!closed);
+        _;
+    }
+    
+    // address not null
+    modifier addressNotNull(address _addr){
+        require(_addr != address(0));
+        _;
+    }
+    
+    
+/* ************************************************ EVENTS ************************************************ */
+
+    /**
+     * Event for token withdrawal logging
+     * @param receiver who receive the tokens
+     * @param amount amount of tokens sent
+     */
+    event TokenDelivered(address indexed receiver, uint256 amount);
+
+    /**
+     * Event for token adding by referral program
+     * @param beneficiary who got the tokens
+     * @param amount amount of tokens added
+    */
+    event TokenPurchase(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
+    
+    event Burn(address indexed burner, uint256 value);
+
+/* ****************************************** Crowdsale Oepration ****************************************** */
+    
+    /**
+    * @param _weiAmount Value in wei to be converted into tokens
+    * @return Number of tokens that can be purchased with the specified _weiAmount
+    */
+    function _getTokenAmount(address _benef, uint256 _weiAmount) private returns (uint256) {
+        uint256 amountToken = _weiAmount * oneEtherValue;
+        uint256 tokenBonus;
+        if(amountToken >= (1000 * _decimals18) ){
+            uint256 amountTokenDiv = amountToken.div(_decimals18);
+            tokenBonus = _getTokenBonus(_benef, amountTokenDiv) * _decimals18;
+        }
+        return amountToken.add(tokenBonus);
+    }
+    
+    
+    // get the token bonus by rate
+    // for 15k$ you will get 75 000 token
+    function _getTokenBonus(address _buyer, uint256 _encx) public returns(uint256) {
+        
+        uint256 bonus;
+        
+        // Private Sale Period
+        if(now <= endPrivateSale && now >= startPrivateSale){
+             // 15k$ - 20K$ => 20%
+            if( _encx >= 75000 && _encx < 150000) {
+                bonus = _encx.mul(20).div(100);
+                return _encx.add(bonus);
+            }
+            // 30k$ - 70K$ => 24%
+            if( _encx >= 150000 && _encx < 350000) {
+                bonus = _encx.mul(24).div(100);
+                return _encx.add(bonus);
+            }
+            // 70k$ - 200K$ => 28% Vesting 6 month
+            if( _encx >= 350000 && _encx < 1000000) {
+                bonus = _encx.mul(28).div(100);
+                bonus = _encx.add(bonus);
+                setVestingPeriod(_buyer, bonus, 0);
+                return bonus;
+            }
+            // 200k$ - 500K$ => 32% Vesting 12 month
+            if( _encx >= 1000000 && _encx < 2500000) {
+                bonus = _encx.mul(32).div(100);
+                bonus = _encx.add(bonus);
+                setVestingPeriod(_buyer, bonus, 1);
+                return bonus;
+            }
+            // 500k$ - 1000K$ => 36% Vesting 12 month
+            if( _encx >= 1000000 && _encx < 5000000) {
+                bonus = _encx.mul(36).div(100);
+                bonus = _encx.add(bonus);
+                setVestingPeriod(_buyer, bonus, 1);
+                return bonus;
+            }
+            // > 1000K$ => 40% Vesting 12 month
+            if( _encx >= 5000000) {
+                bonus = _encx.mul(40).div(100);
+                bonus = _encx.add(bonus);
+                setVestingPeriod(_buyer, bonus, 1);
+                return bonus;
+            }
+        }
+        
+        // Pre ICO Sale Period
+        if(now <= endPreSale && now >= startPreSale){
+            // 300$ - 700K$ => 10%
+            if( _encx >= 1500 && _encx < 3500) {
+                bonus = _encx.mul(10).div(100);
+                return _encx.add(bonus);
+            }
+            // >= 700$ => 15%
+            if( _encx >= 3500) {
+                bonus = _encx.mul(15).div(100);
+                return _encx.add(bonus);
+            }
+        }
+        
+        // Public ICO Sale Period
+        if(now <= endPublicSale && now >= startPublicSale){
+            // >= 200$  => 5%
+            if( _encx >= 1000 ) {
+                bonus = _encx.mul(5).div(100);
+                return _encx.add(bonus);
+            }
+        }
+        
+        return _encx;
+    }
+    
+    /**
+     * @dev Tranfert wei amount
+    */
+    function _forwardFunds() private {
+        walletCollect.transfer(msg.value);
+    }
+    
+     /**
+     * @dev Deliver tokens to receiver_ after crowdsale ends.
+     */
+    function withdrawTokensFor(address receiver_) public onlyOwner {
+        _withdrawTokensFor(receiver_);
+    }
+
+
+    /**
+     * @dev Withdraw tokens for receiver_ after crowdsale ends.
+     */
+    function _withdrawTokensFor(address receiverAdd) internal {
+        require(closed);
+        uint256 amount = balancesPurchase[receiverAdd];
+        require(amount > 0);
+        balancesPurchase[receiverAdd] = 0;
+        emit TokenDelivered(receiverAdd, amount);
+        _deliverTokens(receiverAdd, amount);
+    }
+    
+    /**
+     * @dev Source of tokens. Override this method to modify the way in which the crowdsale ultimately gets and sends its tokens.
+     * @param _beneficiary Address performing the token purchase
+     * @param _tokenAmount Number of tokens to be emitted
+     */
+    function _deliverTokens(address _beneficiary, uint256 _tokenAmount) internal {
+        transfer(_beneficiary, _tokenAmount);
+    }
+    
+    /**
+     * @param _beneficiary Address performing the token purchase
+     */
+    function buyTokens(address _beneficiary) notCloseICO public payable {
+
+        uint256 weiAmount = msg.value;
+
+        require(_beneficiary != address(0));
+        require(weiAmount != 0 && weiAmount >= minimumWei);
+
+        // calculate token amount to be created
+        uint256 tokens = _getTokenAmount(_beneficiary, weiAmount);
+        
+        // update state
+        weiRaised = weiRaised.add(weiAmount);
+        
+        _processPurchase(_beneficiary, tokens);
+        emit TokenPurchase(msg.sender, _beneficiary, weiAmount, tokens);
+        
+        if(tokenForSale == ENCXRaised) closed = true;
+        _forwardFunds();
+    }
+    
+    /**
+     * @param _beneficiary Token purchaser
+     * @param _tokenAmount Amount of tokens purchased
+    */
+    function _processPurchase(address _beneficiary, uint256 _tokenAmount) notCloseICO internal {
+        balancesPurchase[_beneficiary] = balancesPurchase[_beneficiary].add(_tokenAmount);
+        ENCXRaised = ENCXRaised.add(_tokenAmount);
+    }
+    
+    // Callback function
+    function () payable external {
+        buyTokens(msg.sender);
+    }
+    
+    
+    /* ************************************************ Set Minimal function ************************************************ */
+    
+    // Change token price
+    function setTokenPrice(uint256 _oneEtherValue) public onlyOwner returns(bool){
+        oneEtherValue = _oneEtherValue;
+        return true;
+    }
+    
+    // Change wallet collect
+    function setWalletColect(address _wallet) public onlyOwner returns(bool){
+        require(_wallet != address(0));
+        walletCollect = _wallet;
+        return true;
+    }
+    
+    // Set advisor wallet
+    function addAdvisorsAddress(address _add) public onlyOwner returns(bool){
+        advisorsAddress = _add;
+        return true;
+    }
+    
+    // set Early investor Address
+    function addEarlyInvestorAddress(address _add) public onlyOwner returns(bool){
+        earlyInvestorAddress = _add;
+        return true;
+    }
+    
+    function addTeamAddress(address _add) public onlyOwner returns(bool){
+        teamAddress = _add;
+        return true;
+    }
+    
+    function addDeveloppementAddress(address _add) public onlyOwner returns(bool){
+        developpementAddress = _add;
+        return true;
+    }
+    
+    // Change token minimull investment
+    function setMinimumWei(uint256 _wei) public onlyOwner returns(bool){
+        require(_wei >= 1);
+        minimumWei = _decimals18 / _wei;
+        return true;
+    }
+    
+    // All getter on Freeze
     function checkFreezeAccount(address _ad) public onlyOwner view returns(bool){
         return freezeAccount[_ad];
+    }
+    
+    function close() public onlyOwner { 
+        selfdestruct(owner);  // `owner` is the owners address
     }
     
     function checkVesting(address _ad) public onlyOwner view 
     returns(address a, uint256 _allowed, uint256 _transfert, uint256 _vestType, uint256 _vestBegin) {
         return (vestingMap[_ad].ad, vestingMap[_ad].allowed, 
         vestingMap[_ad].transfert, vestingMap[_ad].vestType, vestingMap[_ad].vestBegin);
+    }
+    
+    function getTokenAmountBuyDuringICO(address _ad) public view returns(uint256){
+        return balancesPurchase[_ad];
     }
 }
