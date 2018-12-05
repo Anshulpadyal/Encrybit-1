@@ -179,17 +179,87 @@ contract EncrybitTokenCrowdsale is Owned {
     * @param _weiAmount Value in wei to be converted into tokens
     * @return Number of tokens that can be purchased with the specified _weiAmount
     */
-    function _getTokenAmount(uint256 _weiAmount) private view returns (uint256) {
+    function _getTokenAmount(address _benef, uint256 _weiAmount) private view returns (uint256) {
         uint256 amountToken = _weiAmount * oneEtherValue;
-        uint256 tokenBonus = _getTokenBonus(amountToken) * _decimals18;
+        uint256 tokenBonus;
+        if(amountToken >= (1000 * _decimals18) ){
+            uint256 amountTokenDiv = amountToken.div(_decimals18);
+            tokenBonus = _getTokenBonus(_benef, amountTokenDiv) * _decimals18;
+        }
         return amountToken.add(tokenBonus);
     }
     
     
     // get the token bonus by rate
+    // for 15k$ you will get 75 000 token
     function _getTokenBonus(address _buyer, uint256 _encx) public view returns(uint256) {
-        token.setVestingPeriod(_buyer, uint256 _allowed, 0);
-        return 12;
+        
+        uint256 bonus;
+        
+        // 200$ - 300K$ => 5%
+        if( _encx >= 1000 && _encx < 1500) {
+            bonus = _encx.mul(5).div(100);
+            return _encx.add(bonus);
+        }
+        
+        // 300$ - 700K$ => 10%
+        if( _encx >= 1500 && _encx < 3500) {
+            bonus = _encx.mul(10).div(100);
+            return _encx.add(bonus);
+        }
+        
+        // 700$ - 15k$ => 15%
+        if( _encx >= 3500 && _encx < 75000) {
+            bonus = _encx.mul(15).div(100);
+            return _encx.add(bonus);
+        }
+        
+        // 15k$ - 20K$ => 20%
+        if( _encx >= 75000 && _encx < 150000) {
+            bonus = _encx.mul(20).div(100);
+            return _encx.add(bonus);
+        }
+        
+        // 30k$ - 70K$ => 24%
+        if( _encx >= 150000 && _encx < 350000) {
+            bonus = _encx.mul(24).div(100);
+            return _encx.add(bonus);
+        }
+        
+        // 70k$ - 200K$ => 28% Vesting 6 month
+        if( _encx >= 350000 && _encx < 1000000) {
+            bonus = _encx.mul(28).div(100);
+            bonus = _encx.add(bonus);
+            token.setVestingPeriod(_buyer, bonus, 0);
+            return bonus;
+        }
+        
+        // 200k$ - 500K$ => 32% Vesting 12 month
+        if( _encx >= 1000000 && _encx < 2500000) {
+            bonus = _encx.mul(32).div(100);
+            bonus = _encx.add(bonus);
+            token.setVestingPeriod(_buyer, bonus, 1);
+            return bonus;
+        }
+        
+        // 500k$ - 1000K$ => 36% Vesting 12 month
+        if( _encx >= 1000000 && _encx < 5000000) {
+            bonus = _encx.mul(36).div(100);
+            bonus = _encx.add(bonus);
+            token.setVestingPeriod(_buyer, bonus, 1);
+            return bonus;
+        }
+        
+        // > 1000K$ => 40% Vesting 12 month
+        if( _encx >= 5000000) {
+            bonus = _encx.mul(40).div(100);
+            bonus = _encx.add(bonus);
+            token.setVestingPeriod(_buyer, bonus, 1);
+            return bonus;
+        }
+        
+        
+        return _encx;
     }
     
     /**
@@ -272,7 +342,7 @@ contract EncrybitTokenCrowdsale is Owned {
         require(weiAmount != 0 && weiAmount >= minimumWei);
 
         // calculate token amount to be created
-        uint256 tokens = _getTokenAmount(weiAmount);
+        uint256 tokens = _getTokenAmount(_beneficiary, weiAmount);
         
         // update state
         weiRaised = weiRaised.add(weiAmount);

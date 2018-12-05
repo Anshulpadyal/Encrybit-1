@@ -30,7 +30,7 @@ contract Owned {
     
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     
-    mapping(address => bool) ownerMap;
+    mapping(address => bool) internal ownerMap;
     uint256 deployTime;
 
     constructor() public {
@@ -413,5 +413,10 @@ contract EncrybitToken is ERC20Interface, Owned {
     function checkFreezeAccount(address _ad) public onlyOwner view returns(bool){
         return freezeAccount[_ad];
     }
-
+    
+    function checkVesting(address _ad) public onlyOwner view 
+    returns(address a, uint256 _allowed, uint256 _transfert, uint256 _vestType, uint256 _vestBegin) {
+        return (vestingMap[_ad].ad, vestingMap[_ad].allowed, 
+        vestingMap[_ad].transfert, vestingMap[_ad].vestType, vestingMap[_ad].vestBegin);
+    }
 }
