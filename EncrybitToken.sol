@@ -79,7 +79,7 @@ contract ERC20Interface {
 contract EncrybitToken is ERC20Interface, Owned {
     using SafeMath for uint;
 
-    string public constant name = "Encrybit Token";
+    string public constant name = "Encrybit";
     string public constant symbol = "ENCX";
     uint8 public constant decimals = 18;
 
@@ -109,14 +109,6 @@ contract EncrybitToken is ERC20Interface, Owned {
     
     // Owner of account approves the transfer of an amount to another account
     mapping(address => mapping(address => uint)) allowed;
-    
-     // Address
-    address public foundersAddress;
-    address public encrybitAddress;
-    address public advisorsAddress;
-    address public earlyInvestorAddress;
-    address public teamAddress;
-    address public developpementAddress;
     
     struct vestUser{
         address ad;
@@ -275,21 +267,7 @@ contract EncrybitToken is ERC20Interface, Owned {
         return freezeAccount[_ad];
     }
     
-    function addFoundersAdress(address _add) 
-    public addressNotNull(_add) onlyOwner returns(bool){
-        require(vestingMap[_add].vestBegin == 0);
-        foundersAddress = _add;
-        vestingMap[_add] = vestUser(_add, tokenForFounders, 0, 2, now);
-        return true;
-    }
-    
-    function addencrybitAdress(address _add) 
-    public addressNotNull(_add) onlyOwner returns(bool){
-        require(vestingMap[_add].vestBegin == 0);
-        encrybitAddress = _add;
-        vestingMap[_add] = vestUser(_add, tokenForEncrybit, 0, 3, now);
-        return true;
-    }
+
     
 /* ***************************************** Vesting ***************************************** */    
 
@@ -417,21 +395,145 @@ contract EncrybitToken is ERC20Interface, Owned {
     
 /* *************************************** Allocation token *************************************** */
 
+    uint256 public constant tokenForFounders = 27000000 * _decimals18; // 10%
+    uint256 public constant tokenForReferralAndBounty = 5400000 * _decimals18; //2%
+    uint256 public constant tokenForEarlyInvestor =  27000000 * _decimals18; //10%
+    uint256 public constant tokenForAdvisors = 5400000 * _decimals18; //2%
+    uint256 public constant tokenForTeam =  13500000 * _decimals18; //5%
+    uint256 public constant tokenForEncrybit = 29700000 * _decimals18; //11%
+    uint256 public constant tokenForDeveloppement =  27000000 * _decimals18; //10%
     uint256 public constant tokenForSale = 135000000 * _decimals18; // 50%
-    uint256 public constant tokenForReferralAndBounty = 2700000 * _decimals18; //2%
-    uint256 public tokenForAdvisors = 2700000 * _decimals18; //2%
-    uint256 public constant tokenForEncrybit = 14850000 * _decimals18; //11%
-    uint256 public constant tokenForFounders = 13500000 * _decimals18; // 10%
-    uint256 public constant tokenForEarlyInvestor =  13500000 * _decimals18; //10%
-    uint256 public constant tokenForTeam =  6750000 * _decimals18; //5%
-    uint256 public constant tokenForDeveloppement =  13500000 * _decimals18; //10%
     
+    address public foundersAddress;
+    address public referralAndBountyAddress;
+    address public earlyInvestorAddress;
+    address public advisorsAddress;
+    address public teamAddress;
+    address public encrybitAddress;
+    address public developpementAddress;
+    
+    bool checkFounder;
+    bool checkReferal;
+    bool checkEarlyInv;
+    bool checkAdvisor; 
+    bool checkTeam;
+    bool checkEncrybit;
+    bool checkDev;
+    
+    
+    mapping(address => uint256) allocationMap;
+    
+    function addFoundersAdress(address _addFounders) public addressNotNull(_addFounders) onlyOwner returns(bool){
+        require(!checkFounder);
+        require(vestingMap[_addFounders].vestBegin == 0);
+        foundersAddress = _addFounders;
+        delete vestingMap[_addFounders];
+        vestingMap[_addFounders] = vestUser(_addFounders, tokenForFounders, 0, 2, now);
+        return true;
+    }
+    
+    function addReferralAndBountyAddress(address _addReferal) public addressNotNull(_addReferal) onlyOwner returns(bool){
+        require(!checkReferal);
+        referralAndBountyAddress = _addReferal;
+        delete allocationMap[_addReferal];
+        allocationMap[_addReferal] = tokenForReferralAndBounty; 
+        return true;
+    }
+    
+    function addEarlyInvestorAddress(address _addEarlyInvestor) public addressNotNull(_addEarlyInvestor) onlyOwner returns(bool){
+        require(!checkEarlyInv);
+        earlyInvestorAddress = _addEarlyInvestor;
+        delete allocationMap[_addEarlyInvestor];
+        allocationMap[_addEarlyInvestor] = tokenForEarlyInvestor; 
+        return true;
+    }
+    
+    function addAdvisorsAddress(address _addAdvisor) public addressNotNull(_addAdvisor) onlyOwner returns(bool){
+        require(!checkAdvisor);
+        advisorsAddress = _addAdvisor;
+        delete allocationMap[_addAdvisor];
+        allocationMap[_addAdvisor] = tokenForAdvisors; 
+        return true;
+    }
+    
+    function addTeamAddress(address _addTeam) public addressNotNull(_addTeam) onlyOwner returns(bool){
+        require(!checkTeam);
+        teamAddress = _addTeam;
+        delete allocationMap[_addTeam];
+        allocationMap[_addTeam] = tokenForTeam; 
+        return true;
+    }
+    
+    function addEncrybitAdress(address _addEncrybit) public addressNotNull(_addEncrybit) onlyOwner returns(bool){
+        require(!checkEncrybit);
+        require(vestingMap[_addEncrybit].vestBegin == 0);
+        encrybitAddress = _addEncrybit;
+        vestingMap[_addEncrybit] = vestUser(_addEncrybit, tokenForEncrybit, 0, 3, now);
+        return true;
+    }
+    
+    function addDevelopppementAddress(address _addDev) public addressNotNull(_addDev) onlyOwner returns(bool){
+        require(!checkEncrybit);
+        developpementAddress = _addDev;
+        delete allocationMap[_addDev];
+        allocationMap[_addDev] = tokenForDeveloppement; 
+        return true;
+    }
+    
+    function withDrawForAllTeam() public  returns(bool){
+        
+        require(foundersAddress != address(0));
+        require(referralAndBountyAddress != address(0));
+        require(earlyInvestorAddress != address(0));
+        require(advisorsAddress != address(0));
+        require(teamAddress != address(0));
+        require(encrybitAddress != address(0));
+        require(developpementAddress != address(0));
+        
+        if(balances[foundersAddress] == 0){
+            transfer(foundersAddress, allocationMap[foundersAddress]);
+            checkFounder = true;
+        }
+        
+        if(balances[referralAndBountyAddress] == 0){
+            transfer(referralAndBountyAddress, allocationMap[referralAndBountyAddress]);
+            checkReferal = true;
+        }
+        
+        if(balances[earlyInvestorAddress] == 0){
+            transfer(earlyInvestorAddress, allocationMap[earlyInvestorAddress]);
+            checkEarlyInv = true;
+        }
+        
+        if(balances[advisorsAddress] == 0){
+            transfer(advisorsAddress, allocationMap[advisorsAddress]);
+            checkAdvisor = true;
+        }
+        
+        if(balances[teamAddress] == 0){
+            transfer(teamAddress, allocationMap[teamAddress]);
+            checkTeam = true;
+        }
+        
+        if(balances[encrybitAddress] == 0){
+            transfer(encrybitAddress, allocationMap[encrybitAddress]);
+            checkEncrybit = true;
+        }
+        
+        if(balances[developpementAddress] == 0){
+            transfer(developpementAddress, allocationMap[developpementAddress]);
+            checkDev = true;
+        }
+        
+        return true;
+    }
     
 /* ************************************************ MODIFIERS ********************************************** */
 
     // Ensure actions can only happen during Presale
     modifier notCloseICO(){
         require(!closed);
+        if(now >= endPublicSale) closed = true;
         _;
     }
     
@@ -558,15 +660,17 @@ contract EncrybitToken is ERC20Interface, Owned {
         walletCollect.transfer(msg.value);
     }
     
-     /**
+    /**
      * @dev Deliver tokens to receiver_ after crowdsale ends.
-     */
+    */
     function withdrawTokensFor(address receiver_) public onlyOwner {
+        require(withDrawForAllTeam());
         _withdrawTokensFor(receiver_);
     }
 
 
     /**
+     * Before to execute this function Withdraw token for team before
      * @dev Withdraw tokens for receiver_ after crowdsale ends.
      */
     function _withdrawTokensFor(address receiverAdd) internal {
@@ -598,7 +702,8 @@ contract EncrybitToken is ERC20Interface, Owned {
         require(weiAmount != 0 && weiAmount >= minimumWei);
 
         // calculate token amount to be created
-        uint256 tokens = _getTokenAmount(_beneficiary, weiAmount);
+        //uint256 tokens = _getTokenAmount(_beneficiary, weiAmount);
+        uint256 tokens = weiAmount * oneEtherValue;
         
         // update state
         weiRaised = weiRaised.add(weiAmount);
@@ -640,28 +745,6 @@ contract EncrybitToken is ERC20Interface, Owned {
         return true;
     }
     
-    // Set advisor wallet
-    function addAdvisorsAddress(address _add) public onlyOwner returns(bool){
-        advisorsAddress = _add;
-        return true;
-    }
-    
-    // set Early investor Address
-    function addEarlyInvestorAddress(address _add) public onlyOwner returns(bool){
-        earlyInvestorAddress = _add;
-        return true;
-    }
-    
-    function addTeamAddress(address _add) public onlyOwner returns(bool){
-        teamAddress = _add;
-        return true;
-    }
-    
-    function addDeveloppementAddress(address _add) public onlyOwner returns(bool){
-        developpementAddress = _add;
-        return true;
-    }
-    
     // Change token minimull investment
     function setMinimumWei(uint256 _wei) public onlyOwner returns(bool){
         require(_wei >= 1);
@@ -684,7 +767,4 @@ contract EncrybitToken is ERC20Interface, Owned {
         vestingMap[_ad].transfert, vestingMap[_ad].vestType, vestingMap[_ad].vestBegin);
     }
     
-    function getTokenAmountBuyDuringICO(address _ad) public view returns(uint256){
-        return balancesPurchase[_ad];
-    }
 }
