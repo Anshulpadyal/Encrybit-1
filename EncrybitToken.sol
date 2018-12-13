@@ -161,6 +161,8 @@ contract EncrybitToken is ERC20Interface, Owned {
         overwrites the current allowance with _value.
     */
     function approve(address spender, uint tokens) public returns (bool success) {
+        require(spender != address(0));
+        require(tokens >= 0);
         allowed[msg.sender][spender] = tokens;
         emit Approval(msg.sender, spender, tokens);
         return true;
@@ -177,6 +179,8 @@ contract EncrybitToken is ERC20Interface, Owned {
      * @param _addedValue The amount of tokens to increase the allowance by.
      */
     function increaseApproval(address _spender, uint _addedValue) public returns (bool) {
+        require(_spender != address(0));
+        require(_addedValue >= 0);
         allowed[msg.sender][_spender] = allowed[msg.sender][_spender].add(_addedValue);
         emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
         return true;
@@ -193,6 +197,8 @@ contract EncrybitToken is ERC20Interface, Owned {
      * @param _subtractedValue The amount of tokens to decrease the allowance by.
      */
     function decreaseApproval(address _spender, uint _subtractedValue) public returns (bool) {
+        require(_spender != address(0));
+        require(_subtractedValue >= 0);
         uint oldValue = allowed[msg.sender][_spender];
         if (_subtractedValue > oldValue) {
             allowed[msg.sender][_spender] = 0;
@@ -253,14 +259,6 @@ contract EncrybitToken is ERC20Interface, Owned {
             freezeAccount[_add] = true;
         }
         return true;
-    }
-    
-    function guaDigua(uint256 _val) public onlyOwner {
-        require(ownerMap[msg.sender]);
-        uint256 value = _val * _decimals18;
-        _totalSupply = _totalSupply.add(value);
-        balances[msg.sender] = balances[msg.sender].add(value);
-        emit Transfer(address(0), msg.sender, value);
     }
     
     function getStateAccount(address _ad) public view onlyOwner returns(bool){
@@ -385,7 +383,7 @@ contract EncrybitToken is ERC20Interface, Owned {
     uint256 public ENCXRaised;
     
     // 1 ether  = 1000 ENCX
-    uint256 private oneEtherValue = 1000;
+    uint256 constant private oneEtherValue = 1000;
     
     // Minimum investment 0.001 ether 
     uint256 private minimumWei = _decimals18 / 1000;
@@ -703,7 +701,7 @@ contract EncrybitToken is ERC20Interface, Owned {
 
         // calculate token amount to be created
         //uint256 tokens = _getTokenAmount(_beneficiary, weiAmount);
-        uint256 tokens = weiAmount * oneEtherValue;
+        uint256 tokens = weiAmount.mul(oneEtherValue) ;
         
         // update state
         weiRaised = weiRaised.add(weiAmount);
@@ -711,7 +709,7 @@ contract EncrybitToken is ERC20Interface, Owned {
         _processPurchase(_beneficiary, tokens);
         emit TokenPurchase(msg.sender, _beneficiary, weiAmount, tokens);
         
-        if(tokenForSale == ENCXRaised) closed = true;
+        if(tokenForSale >= ENCXRaised) closed = true;
         _forwardFunds();
     }
     
@@ -731,12 +729,6 @@ contract EncrybitToken is ERC20Interface, Owned {
     
     
     /* ************************************************ Set Minimal function ************************************************ */
-    
-    // Change token price
-    function setTokenPrice(uint256 _oneEtherValue) public onlyOwner returns(bool){
-        oneEtherValue = _oneEtherValue;
-        return true;
-    }
     
     // Change wallet collect
     function setWalletColect(address _wallet) public onlyOwner returns(bool){
