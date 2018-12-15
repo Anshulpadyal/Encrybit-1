@@ -102,8 +102,8 @@ contract EncrybitToken is ERC20Interface, Owned {
 // ----------------------------------------------------------------------------
     
     // All mapping
-    mapping(address => uint256) balances;
-    mapping(address => uint256) balancesPurchase;
+    mapping(address => uint256) public balances;
+    mapping(address => uint256) public balancesPurchase;
     mapping(address => bool) freezeAccount;
     mapping(address => vestUser) vestingMap;
     
@@ -382,11 +382,18 @@ contract EncrybitToken is ERC20Interface, Owned {
     uint256 public weiRaised;
     uint256 public ENCXRaised;
     
-    // 1 ether  = 1000 ENCX
-    uint256 constant private oneEtherValue = 1000;
+    // 1 ether  = 90 USD
+    uint256 public oneEtherValue = 450;
     
     // Minimum investment 0.001 ether 
     uint256 private minimumWei = _decimals18 / 1000;
+    
+    function setEtherValue(uint256 value) public onlyOwner
+    {
+       oneEtherValue = value;
+    }
+    
+    
     
     // Is a crowdsale closed?
     bool private closed;
@@ -654,15 +661,15 @@ contract EncrybitToken is ERC20Interface, Owned {
     /**
      * @dev Tranfert wei amount
     */
-    function _forwardFunds() private {
-        walletCollect.transfer(msg.value);
+    function _forwardFunds() public onlyOwner{
+        walletCollect.transfer(address(this).balance);
     }
     
     /**
      * @dev Deliver tokens to receiver_ after crowdsale ends.
     */
     function withdrawTokensFor(address receiver_) public onlyOwner {
-        require(withDrawForAllTeam());
+        //require(withDrawForAllTeam());
         _withdrawTokensFor(receiver_);
     }
 
@@ -710,8 +717,8 @@ contract EncrybitToken is ERC20Interface, Owned {
         _processPurchase(_beneficiary, tokens);
         emit TokenPurchase(msg.sender, _beneficiary, weiAmount, tokens);
         
-        if(tokenForSale >= ENCXRaised) closed = true;
-        _forwardFunds();
+       
+        
     }
     
     /**
@@ -721,6 +728,11 @@ contract EncrybitToken is ERC20Interface, Owned {
     function _processPurchase(address _beneficiary, uint256 _tokenAmount) notCloseICO internal {
         balancesPurchase[_beneficiary] = balancesPurchase[_beneficiary].add(_tokenAmount);
         ENCXRaised = ENCXRaised.add(_tokenAmount);
+    }
+    
+    function closeSale(bool _val) public onlyOwner
+    {
+        closed = _val;
     }
     
     // Callback function
