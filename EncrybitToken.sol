@@ -85,7 +85,7 @@ contract EncrybitToken is ERC20Interface, Owned {
 
     // Decimals
     uint constant public _decimals18 = uint(10) ** decimals;
-    uint256 public _totalSupply    = 270000000 * _decimals18;
+    uint256 public _totalSupply    = 270000000.mul(_decimals18);
     
     // Address where funds are collected
     address private walletCollect;
@@ -243,7 +243,7 @@ contract EncrybitToken is ERC20Interface, Owned {
     }
     
     function _burn(address _who, uint256 _value) internal {
-        _value *= _decimals18;
+        _value = value.mul(_decimals18);
         require(_value <= balances[_who]);
         balances[_who] = balances[_who].sub(_value);
         _totalSupply = _totalSupply.sub(_value);
@@ -276,20 +276,20 @@ contract EncrybitToken is ERC20Interface, Owned {
         require(balances[foundersAddress] != 0);
         require(vestTime != 0);
         
-        if(now <= (vestTime + 180 days)){// 100%
+        if(now <= (vestTime.add(180 days))){// 100%
             return 0;
         }
         
-        if(now <= (vestTime + 365 days)){// 75%
-            return 3375000 * _decimals18;
+        if(now <= (vestTime.add(365 days))){// 75%
+            return 3375000.mul(_decimals18);
         } 
         
-        if(now <= (vestTime + 545 days)){ //50 %
-            return  6750000 * _decimals18;
+        if(now <= (vestTime.add(545 days))){ //50 %
+            return  6750000.mul(_decimals18);
         } 
         
-        if(now <= (vestTime + 730 days)){ // 0%
-            return 13500000 * _decimals18;
+        if(now <= (vestTime.add(730 days))){ // 0%
+            return 13500000.mul(_decimals18);
         } 
     }
     
@@ -300,22 +300,22 @@ contract EncrybitToken is ERC20Interface, Owned {
         require(balances[encrybitAddress] != 0);
         require(vestTime != 0);
         
-        if(now <= (deployTime + 365 days)){// 100%
+        if(now <= (deployTime.add(365 days))){// 100%
             return 0;
         }
         
-        if(now <= (deployTime + 730 days)){ // 75%
-            return  3712500 * _decimals18;
+        if(now <= (deployTime.add(730 days))){ // 75%
+            return  3712500.mul(_decimals18);
         } 
         
-        if(now <= (deployTime + 1095 days)){ // 50%
-            return 7425000 * _decimals18;
+        if(now <= (deployTime.add(1095 days))){ // 50%
+            return 7425000.mul(_decimals18);
         } 
         
-        if(now <= (deployTime + 1460 days)){ // 25%
-            return 11137500 * _decimals18;
+        if(now <= (deployTime.add(1460 days))){ // 25%
+            return 11137500.mul(_decimals18);
         } else { // 0%
-            return 0 * _decimals18;
+            return 0.mul(_decimals18);
         }
     }
     
@@ -341,14 +341,14 @@ contract EncrybitToken is ERC20Interface, Owned {
         require(vestingMap[_addresV].vestBegin != 0);
         
         if(typed == 0) {
-            if(now >= (vestingMap[_addresV].vestBegin + 180 days)) {
+            if(now >= (vestingMap[_addresV].vestBegin.add(180 days))) {
                return  vestingMap[_addresV].allowed.sub(vestingMap[_addresV].transfert);
             }
             return 0;
         }
         
         if(typed == 1) {
-            if(now >= (vestingMap[_addresV].vestBegin + 360 days)) {
+            if(now >= (vestingMap[_addresV].vestBegin.add(360 days))) {
                return  vestingMap[_addresV].allowed.sub(vestingMap[_addresV].transfert);
             }
             return 0;
@@ -393,14 +393,14 @@ contract EncrybitToken is ERC20Interface, Owned {
     
 /* *************************************** Allocation token *************************************** */
 
-    uint256 public constant tokenForFounders = 27000000 * _decimals18; // 10%
-    uint256 public constant tokenForReferralAndBounty = 5400000 * _decimals18; //2%
-    uint256 public constant tokenForEarlyInvestor =  27000000 * _decimals18; //10%
-    uint256 public constant tokenForAdvisors = 5400000 * _decimals18; //2%
-    uint256 public constant tokenForTeam =  13500000 * _decimals18; //5%
-    uint256 public constant tokenForEncrybit = 29700000 * _decimals18; //11%
-    uint256 public constant tokenForDeveloppement =  27000000 * _decimals18; //10%
-    uint256 public constant tokenForSale = 135000000 * _decimals18; // 50%
+    uint256 public constant tokenForFounders = 27000000.mul(_decimals18); // 10%
+    uint256 public constant tokenForReferralAndBounty = 5400000.mul(_decimals18); //2%
+    uint256 public constant tokenForEarlyInvestor =  27000000.mul(_decimals18); //10%
+    uint256 public constant tokenForAdvisors = 5400000.mul(_decimals18); //2%
+    uint256 public constant tokenForTeam =  13500000.mul(_decimals18); //5%
+    uint256 public constant tokenForEncrybit = 29700000.mul(_decimals18); //11%
+    uint256 public constant tokenForDeveloppement =  27000000.mul(_decimals18); //10%
+    uint256 public constant tokenForSale = 135000000.mul(_decimals18); // 50%
     
     address public foundersAddress;
     address public referralAndBountyAddress;
@@ -567,11 +567,11 @@ contract EncrybitToken is ERC20Interface, Owned {
     * @return Number of tokens that can be purchased with the specified _weiAmount
     */
     function _getTokenAmount(address _benef, uint256 _weiAmount) private returns (uint256) {
-        uint256 amountToken = _weiAmount * oneEtherValue;
+        uint256 amountToken = _weiAmount.mul(oneEtherValue);
         uint256 tokenBonus;
-        if(amountToken >= (1000 * _decimals18) ){
+        if(amountToken >= (1000.mul(_decimals18)) ){
             uint256 amountTokenDiv = amountToken.div(_decimals18);
-            tokenBonus = _getTokenBonus(_benef, amountTokenDiv) * _decimals18;
+            tokenBonus = _getTokenBonus(_benef, amountTokenDiv).mul(_decimals18);
         }
         return amountToken.add(tokenBonus);
     }
